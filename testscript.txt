@@ -1,0 +1,101 @@
+from clustering import run_kmeans, evaluate_kmeans, run_EM, evaluate_EM, add_clusters, find_inertia, plot_snspairplot
+from dimensionality_reduction import run_PCA, run_ICA, run_RCA, run_RFC, \
+    compare_fit_time, compare_pred_time, compare_learn_time
+from sklearn.cluster import KMeans
+from sklearn.model_selection import train_test_split
+from sklearn.neural_network import MLPClassifier
+from sklearn.mixture import GaussianMixture as EM
+from util import final_classifier_evaluation, plot_learning_curve, load_wine_quality_data, load_Star3642_balanced_data
+
+from sklearn.decomposition import PCA, FastICA as ICA
+from sklearn.random_projection import SparseRandomProjection as RCA
+import numpy as np
+import pandas as pd
+from sklearn import preprocessing
+import matplotlib
+matplotlib.use('TkAgg')
+import matplotlib.pyplot as plt
+import seaborn as sns
+
+
+X1, y1 = load_wine_quality_data('data/wine_quality.csv')
+std_scaler = preprocessing.StandardScaler()
+X1 = std_scaler.fit_transform(X1)
+
+# Load the Star3642 balanced dataset
+X2, y2 = load_Star3642_balanced_data('data/Star3642_balanced.csv')
+
+# Standardize the features of Star3642 balanced dataset
+std_scaler = preprocessing.StandardScaler()
+X2 = std_scaler.fit_transform(X2)
+df_star3642 = pd.read_csv('data/Star3642_balanced.csv')
+
+
+##################################
+# Running Clustering experiments - n_jobs is deprecated
+##################################
+
+km = KMeans(n_clusters=9, n_init=10, random_state=100)
+evaluate_kmeans(km, X1, y1)
+
+y_mode_vote = cluster_predictions(y1, km.labels_)
+auc_y = roc_auc_score(y1, y_mode_vote)
+accuracy = accuracy_score(y1, y_mode_vote)
+cm = confusion_matric(y1, y_mode_vote) 
+
+plt.figure()
+plot_confusion_matrix(cm, classes=["0", "1"], title='Confusion Matrix')
+
+
+X1, y1 = load_wine_quality_data('data/wine_quality.csv')
+df_winequality = pd.read_csv('data/wine_quality.csv')
+imp_winequality, topcols_winequality = run_RFC(X1, y1, df_winequality)
+
+
+pca_X1 = PCA(n_components=10, random_state=5).fit_transform(X1)
+run_kmeans(pca_X1, y1, 'PCA Wine Quality Data')
+ica_X1 = ICA(n_components=11, random_state=5).fit_transform(X1)
+run_kmeans(ica_X1, y1, 'ICA Wine Quality Data')
+rca_X1 = RCA(n_components=10, random_state=5).fit_transform(X1)
+run_kmeans(rca_X1, y1, 'RCA Wine Quality Data')
+
+
+#######################
+# Running Clustering experiements on Star3642 balanced dataset 
+#######################
+
+X_train, X_test, y_train, y_test = train_test_split(np.array(X2), np.array(y2), test_size=0.2)
+pca_X2 = PCA(n_components=5, random_state=5).fit_transform(X_train)
+
+ica_X2 = ICA(n_components=4, random_state=5).fit_transform(X_train)
+run_kmeans(ica_X2, y_train, 'ICA Star3642 Data')
+
+rca_X2 = RCA(n_components=3, random_state=5).fit_transform(X_train)
+rfc_X2 = df_star3642(topcols_star3642)
+rfc_X2 = np.array(rfc_X2.values, dtype='int64')
+
+
+
+
+********************************************************
+
+evaluate_kmeans(KMeans(n_clusters=15, n_init=10, random_state=100), pca_X1, y1)
+evaluate_kmeans(KMeans(n_clusters=13, n_init=10, random_state=100), ica_X1, y1)
+evaluate_kmeans(KMeans(n_clusters=11, n_init=10, random_state=100), rca_X1, y1)
+
+
+run_EM(pca_X1, y1, 'PCA Wine Quality Data')
+run_EM(ica_X1, y1, 'ICA Wine Quality Data')
+run_EM(rca_X1, y1, 'RCA Wine Quality Data')
+
+run_EM(pca_X1, y1, 'PCA Wine Quality Data')
+evaluate_EM(EM(n_components=18, covariance_type='diag', n_init=1,
+                   warm_start=True, random_state=100), pca_X1, y1)
+
+
+evaluate_EM(EM(n_components=28, covariance_type='diag', n_init=1,
+                   warm_start=True, random_state=100), ica_X1, y1)
+
+evaluate_EM(EM(n_components=25, covariance_type='diag', n_init=1,
+                   warm_start=True, random_state=100), rca_X1, y1)
+
